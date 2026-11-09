@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EchoSpeak | AI 智能英語口說教練</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          animation: {
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'ripple': 'ripple 1.5s linear infinite',
+          },
+          keyframes: {
+            ripple: {
+              '0%': { transform: 'scale(0.8)', opacity: '1' },
+              '100%': { transform: 'scale(2.2)', opacity: '0' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .dark ::-webkit-scrollbar-thumb { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans antialiased transition-colors duration-200">
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="mic" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-violet-600 bg-clip-text text-transparent">EchoSpeak</span>
+          <span class="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-900/50 text-brand-600 dark:text-brand-300 border border-brand-200 dark:border-brand-700">AI Coach</span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 sm:gap-2">
+        <button id="nav-dialogue-btn" onclick="switchMode('dialogue')" class="nav-tab px-3 py-2 text-sm font-medium rounded-lg text-brand-600 bg-brand-50 dark:bg-brand-950 dark:text-brand-300 flex items-center gap-1.5 transition">
+          <i data-lucide="messages-square" class="w-4 h-4"></i>
+          <span>情境對話</span>
+        </button>
+        <button id="nav-exam-btn" onclick="switchMode('exam')" class="nav-tab px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition">
+          <i data-lucide="award" class="w-4 h-4"></i>
+          <span>檢定模擬 (IELTS/TOEFL)</span>
+        </button>
+        <button id="nav-history-btn" onclick="switchMode('history')" class="nav-tab px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>練習紀錄</span>
+        </button>
+      </nav>
+
+      <!-- Settings & Theme -->
+      <div class="flex items-center gap-2">
+        <!-- Voice Speed / Voice selector toggle -->
+        <button onclick="toggleAudioSettingsModal()" title="語音設定" class="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+        <!-- Dark mode toggle -->
+        <button id="theme-toggle" onclick="toggleTheme()" class="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- MODE 1: 情境對話練習 (AI Roleplay) -->
+    <section id="section-dialogue" class="h-full flex flex-col gap-4">
+      <!-- Scenario Selector Card -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="p-3 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-300 rounded-xl">
+            <i data-lucide="coffee" id="scenario-icon" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 id="scenario-title" class="text-base font-semibold">咖啡廳點餐 (Coffee Shop Order)</h2>
+            <p id="scenario-desc" class="text-xs text-slate-500 dark:text-slate-400">你正在西雅圖知名咖啡店，嘗試為自己客製一杯燕麥奶拿鐵與輕食。</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <select id="scenario-select" onchange="changeScenario(this.value)" class="text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 w-full sm:w-56">
+            <option value="cafe">☕ 咖啡廳點餐 (入門日常)</option>
+            <option value="interview">💼 軟體工程師求職面試 (專業職場)</option>
+            <option value="travel">✈️ 機場海關入境問答 (旅遊必備)</option>
+            <option value="campus">🎓 大學課堂討論 (學術探討)</option>
+          </select>
+          <button onclick="resetDialogue()" title="重置對話" class="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dialogue Grid (Chat Stream + Realtime Feedback Panel) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[520px]">
+        
+        <!-- Left: Chat Stream & Voice Interaction Area (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden h-[620px]">
+          <!-- Message history -->
+          <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4">
+            <!-- Dynamic Messages will render here -->
+          </div>
+
+          <!-- Active Audio Visualizer bar (when recording) -->
+          <div id="recording-visualizer-container" class="hidden px-4 py-2 bg-rose-50 dark:bg-rose-950/40 border-t border-rose-200 dark:border-rose-900/50 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-semibold animate-pulse">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+              <span>聆聽中... (請開口說話)</span>
+            </div>
+            <canvas id="waveform-canvas" width="220" height="28" class="rounded"></canvas>
+          </div>
+
+          <!-- Bottom Input Bar -->
+          <div class="p-3 sm:p-4 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <input type="text" id="chat-text-input" placeholder="按麥克風開口說，或在此直接打字輸入..." class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              
+              <!-- Mic Button -->
+              <button id="mic-btn" onclick="toggleSpeechRecognition()" class="relative flex-shrink-0 w-11 h-11 rounded-xl bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center transition shadow-md group">
+                <span id="mic-pulse" class="absolute inset-0 rounded-xl bg-brand-500 animate-ripple hidden"></span>
+                <i data-lucide="mic" id="mic-icon" class="w-5 h-5 relative z-10"></i>
+              </button>
+
+              <!-- Send Button -->
+              <button onclick="handleUserSend()" class="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 transition">
+                <i data-lucide="send" class="w-5 h-5"></i>
+              </button>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span>支援 Chrome / Edge 原生語音辨識；按 Enter 鍵亦可直接送出</span>
+              <span id="stt-status" class="text-brand-600 dark:text-brand-400 font-medium">系統待命</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Real-time Coach Feedback Drawer (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 overflow-y-auto h-[620px]">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <h3 class="text-sm font-bold">AI 即時教練反饋 (Realtime Feedback)</h3>
+            </div>
+            <span class="text-xs text-slate-400">最新回答分析</span>
+          </div>
+
+          <div id="feedback-empty-state" class="flex-1 flex flex-col items-center justify-center text-center p-6 text-slate-400">
+            <i data-lucide="bot" class="w-12 h-12 mb-3 stroke-1 text-slate-300 dark:text-slate-600"></i>
+            <p class="text-sm font-medium">尚未接收到您的發言</p>
+            <p class="text-xs text-slate-400 mt-1 max-w-xs">在左側說話或送出句子後，AI 將即時在此為您分析發音建議、文法修正與詞彙升級。</p>
+          </div>
+
+          <!-- Dynamic Feedback Content -->
+          <div id="feedback-content" class="hidden mt-4 space-y-4">
+            <!-- Grammar & Structure Fix -->
+            <div class="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40">
+              <div class="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                <span>文法與更道地表達 (Grammar & Polish)</span>
+              </div>
+              <div class="space-y-1.5 text-xs">
+                <div class="text-slate-500 line-through" id="fb-original">"Can I have one coffee please with oat milk?"</div>
+                <div class="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1" id="fb-suggested">
+                  <i data-lucide="arrow-right" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                  <span>"Could I please get an iced latte with oat milk?"</span>
+                </div>
+                <p id="fb-explain" class="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
+                  使用 Could I get 比 Can I have 在英語口語禮貌層次上更加道地自然。
+                </p>
+              </div>
+            </div>
+
+            <!-- Vocabulary Booster -->
+            <div class="p-3.5 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900/40">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-1.5 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                  <i data-lucide="zap" class="w-4 h-4"></i>
+                  <span>詞彙升級 (Vocabulary Booster)</span>
+                </div>
+                <span class="text-[10px] bg-brand-200/60 dark:bg-brand-900 text-brand-800 dark:text-brand-300 px-1.5 py-0.5 rounded">CEFR B2-C1</span>
+              </div>
+              <div id="vocab-badges" class="flex flex-wrap gap-1.5">
+                <!-- Badges injected via JS -->
+              </div>
+            </div>
+
+            <!-- Native Pronunciation Audio Example -->
+            <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-800 dark:text-slate-200">聆聽母語範例原音</p>
+                <p class="text-[11px] text-slate-400">標準美式音調連音對照</p>
+              </div>
+              <button onclick="playFeedbackSampleAudio()" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="volume-2" class="w-4 h-4 text-brand-600 dark:text-brand-400"></i>
+                <span>朗讀示範</span>
+              </button>
+            </div>
+
+            <!-- Fluency / Tone Tips -->
+            <div class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-xs space-y-1">
+              <span class="font-semibold text-slate-700 dark:text-slate-300">💡 教練提示：</span>
+              <p id="fb-tip" class="text-slate-600 dark:text-slate-400">
+                點餐時語調在句尾稍微上揚（rising intonation），會讓人感覺更親切友善。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODE 2: 檢定口說模擬 (IELTS / TOEFL Style) -->
+    <section id="section-exam" class="hidden space-y-6">
+      <!-- Exam Configuration Header -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">IELTS Speaking Part 2 / TOEFL Task 2</span>
+              <span class="text-xs text-slate-400">標準全真題型模擬</span>
+            </div>
+            <h2 class="text-xl font-bold">學術與高階口說模擬測試</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">練習在時限壓力下組織觀點、擴展論述與流暢表達。</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="loadRandomPrompt()" class="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm font-medium flex items-center gap-2 transition">
+              <i data-lucide="shuffle" class="w-4 h-4"></i>
+              <span>更換題目</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Exam Prompt Card -->
+        <div class="mt-6 p-5 rounded-2xl bg-gradient-to-r from-brand-50 to-indigo-50/50 dark:from-slate-800/80 dark:to-slate-800/40 border border-brand-200 dark:border-slate-700">
+          <div class="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wider mb-2">Topic Prompt</div>
+          <h3 id="exam-prompt-title" class="text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
+            "Describe an impactful technological invention in modern history and explain how it changed everyday human lives."
+          </h3>
+          <ul id="exam-prompt-points" class="mt-3 space-y-1 text-sm text-slate-600 dark:text-slate-300 list-disc list-inside">
+            <li>What the invention is and when you first learned about it</li>
+            <li>How people lived before this invention</li>
+            <li>What advantages and potential disadvantages it has brought</li>
+            <li>And explain why you consider it so influential.</li>
+          </ul>
+        </div>
+
+        <!-- Timer & Recording Studio Box -->
+        <div class="mt-6 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
+          
+          <!-- Timer Display -->
+          <div class="text-center mb-5">
+            <div id="exam-timer-label" class="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">準備中 (Preparation)</div>
+            <div id="exam-timer-display" class="text-5xl font-extrabold tracking-tight font-mono text-slate-900 dark:text-white">00:15</div>
+          </div>
+
+          <!-- Waveform Canvas during Exam -->
+          <canvas id="exam-waveform" width="340" height="40" class="mb-5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"></canvas>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-4">
+            <button id="exam-start-btn" onclick="startExamSequence()" class="px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 flex items-center gap-2 transition">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span>開始準備 (15s 倒數)</span>
+            </button>
+            <button id="exam-stop-btn" onclick="finishExamSpeaking()" class="hidden px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-sm shadow-lg shadow-rose-500/25 flex items-center gap-2 transition">
+              <i data-lucide="square" class="w-4 h-4"></i>
+              <span>提前提交作答</span>
+            </button>
+          </div>
+          <p id="exam-status-hint" class="text-xs text-slate-400 mt-3">點擊開始後將有 15 秒閱讀題目構思，隨後自動啟動 45 秒錄音作答。</p>
+        </div>
+      </div>
+
+      <!-- Result & Evaluation Report Card (Shown after completion) -->
+      <div id="exam-report-container" class="hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-3">
+          <div>
+            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Evaluation Report</span>
+            <h3 class="text-xl font-bold">作答評分與分析報告</h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="px-4 py-2 rounded-xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-center">
+              <div class="text-[10px] text-brand-600 dark:text-brand-400 font-bold">預估 IELTS 級分</div>
+              <div id="report-band-score" class="text-2xl font-black text-brand-600 dark:text-brand-300">7.0</div>
+            </div>
+            <div class="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-center">
+              <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">CEFR 等級</div>
+              <div id="report-cefr-score" class="text-2xl font-black text-indigo-600 dark:text-indigo-300">C1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4-Dimension Metric Bars -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+              <span>流暢度 (Fluency & Coherence)</span>
+              <span id="score-fluency" class="text-brand-600 font-bold">7.5 / 9</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-brand-500 h-full w-[83%]"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">停頓少，轉折詞 (However, Furthermore) 運用自然。</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+              <span>詞彙豐富度 (Lexical Resource)</span>
+              <span id="score-vocab" class="text-brand-600 font-bold">6.5 / 9</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-indigo-500 h-full w-[72%]"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">可適度將 common words (good, big) 替換為高階詞彙。</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+              <span>文法多樣性 (Grammar Range)</span>
+              <span id="score-grammar" class="text-brand-600 font-bold">7.0 / 9</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-emerald-500 h-full w-[78%]"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">從屬子句使用佳，注意第三人稱單數動詞變化。</p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+              <span>發音咬字 (Pronunciation)</span>
+              <span id="score-pron" class="text-brand-600 font-bold">7.0 / 9</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+              <div class="bg-amber-500 h-full w-[77%]"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">重音節與連音清楚，母音長短可再加強辨識度。</p>
+          </div>
+        </div>
+
+        <!-- User Transcript & AI Polished Masterpiece -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">您的發言轉錄 (Your Transcript)</h4>
+            <p id="report-user-transcript" class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">
+              "I think smartphones are very important invention because everyone use it every day. It changes our communication..."
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">8.5 級分範例解答 (Band 8.5 Model Answer)</h4>
+              <button onclick="playModelAnswerAudio()" class="text-xs text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 font-semibold">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i> 聽示範
+              </button>
+            </div>
+            <p id="report-model-answer" class="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
+              "Without question, the smartphone stands out as one of the most transformative inventions in modern era. It has revolutionized our access to information and rendered geographical distance negligible..."
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODE 3: 練習紀錄 (Practice History & Analytics) -->
+    <section id="section-history" class="hidden space-y-6">
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <h2 class="text-xl font-bold">歷史練習紀錄與軌跡</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">追蹤您的口說次數、發音評分與常用優化詞彙。</p>
+          </div>
+          <button onclick="clearHistory()" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 dark:border-rose-900 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition">
+            清除紀錄
+          </button>
+        </div>
+
+        <div id="history-list" class="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
+          <!-- Dynamic history rows -->
+        </div>
+
+        <div id="history-empty" class="text-center py-12 text-slate-400">
+          <i data-lucide="inbox" class="w-12 h-12 mx-auto stroke-1 mb-2"></i>
+          <p class="text-sm">尚無練習記錄，趕緊開始第一次情境對話吧！</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Audio / Voice Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg">語音與發音偏好設定</h3>
+        <button onclick="toggleAudioSettingsModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">AI 朗讀聲音 (SpeechSynthesis Voice)</label>
+          <select id="voice-select" class="w-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg p-2 text-sm focus:outline-none">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1">
+            <span>語速 (Speech Rate)</span>
+            <span id="rate-val">1.0x</span>
+          </div>
+          <input type="range" id="voice-rate" min="0.7" max="1.3" step="0.1" value="1.0" oninput="document.getElementById('rate-val').innerText = this.value + 'x'" class="w-full accent-brand-600">
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>0.7x (初學清晰)</span>
+            <span>1.0x (自然)</span>
+            <span>1.3x (快節奏)</span>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+          <button onclick="testVoiceSpeech()" class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-medium mr-2">試聽發音</button>
+          <button onclick="toggleAudioSettingsModal()" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium">儲存設定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-brand-400"></i>
+    <span id="toast-text">訊息提示</span>
+  </div>
+
+  <script>
+    /* ==========================================================
+       1. SCENARIO & PROMPT DATASETS
+    ========================================================== */
+    const SCENARIOS = {
+      cafe: {
+        title: "咖啡廳點餐 (Coffee Shop Order)",
+        icon: "coffee",
+        desc: "你正在西雅圖知名咖啡店，嘗試為自己客製一杯燕麥奶拿鐵與輕食。",
+        initialAi: "Good morning! Welcome to Pike Place Roastery. What can I get started for you today?",
+        responses: [
+          {
+            match: ["latte", "coffee", "cappuccino", "espresso"],
+            reply: "Great choice! Would you prefer regular whole milk, or would you like oat, almond, or soy milk with that?",
+            better: "I'd love a medium latte with oat milk, please.",
+            grammarHint: "口語中 'I'd love a...' 或 'Could I get...' 聽起來比 'I want...' 更加禮貌優雅。",
+            synonyms: [
+              { word: "beverage", note: "取代普通 drink" },
+              { word: "customized", note: "特製化配方" },
+              { word: "decaf", note: "低咖啡因" }
+            ],
+            tip: "在點選客製化咖啡時，可連貫說出：Size + Temp + Milk + Item (e.g., Medium iced oat latte)."
+          },
+          {
+            match: ["oat", "almond", "milk", "hot", "iced"],
+            reply: "Got it! And would you care for any warm pastries or croissants to go along with that?",
+            better: "An iced oat latte sounds wonderful. Could you also warm up a blueberry muffin?",
+            grammarHint: "使用 'sounds wonderful' 能大幅拉近與店員的親切互動氣氛。",
+            synonyms: [
+              { word: "pastry", note: "烘焙糕點" },
+              { word: "complement", note: "搭配、相得益彰" }
+            ],
+            tip: "結帳時店員常問 'For here or to go?'，回答 'To go, please' 或 'Having it here' 即可。"
+          },
+          {
+            default: true,
+            reply: "Certainly! I've put that down for you. That will be $6.50. Will you be paying by card or Apple Pay?",
+            better: "I will tap my card, thank you!",
+            grammarHint: "在海外感應刷卡通常說 'I'll tap' 或 'By contactless card'。",
+            synonyms: [
+              { word: "contactless", note: "無接觸感應" },
+              { word: "receipt", note: "發票收據 (p不發音)" }
+            ],
+            tip: "收據詢問時回答 'No receipt needed, thank you' 非常自然俐落。"
+          }
+        ]
+      },
+      interview: {
+        title: "軟體工程師求職面試 (Tech Job Interview)",
+        icon: "briefcase",
+        desc: "矽谷跨國科技公司的線上面試，面試官請你介紹最棘手的技術挑戰。",
+        initialAi: "Hi Alex, thank you for joining us today. To start, could you walk me through a challenging technical problem you solved recently?",
+        responses: [
+          {
+            match: ["problem", "bug", "scale", "system", "database", "api"],
+            reply: "That sounds like a complex scenario. How did you diagnose the root cause, and how did your solution impact user latency?",
+            better: "We encountered a high-concurrency bottleneck in our indexing pipeline, which led me to refactor the caching layer using Redis.",
+            grammarHint: "運用 STAR 原則（Situation, Task, Action, Result）結構化陳述問題背景。",
+            synonyms: [
+              { word: "bottleneck", note: "系統效能瓶頸" },
+              { word: "orchestrate", note: "精準統籌規劃" },
+              { word: "refactor", note: "重構程式碼架構" }
+            ],
+            tip: "避免只說 'I fixed a big bug'，改用 'I mitigated a critical vulnerability' 展現資深工程素養。"
+          },
+          {
+            default: true,
+            reply: "Impressive troubleshooting methodology. How did you align this improvement with your product managers and team members?",
+            better: "I documented the benchmark metrics and conducted an architectural review with the stakeholders before rolling it out.",
+            grammarHint: "善用 'cross-functional collaboration' (跨職能協作) 是外商極度看重的關鍵字。",
+            synonyms: [
+              { word: "stakeholder", note: "專案關係人" },
+              { word: "seamlessly", note: "無縫平順地" }
+            ],
+            tip: "面試時句型多用主動動詞：Led, architected, optimized, reduced latency by 35%."
+          }
+        ]
+      },
+      travel: {
+        title: "機場海關入境問答 (Customs & Border Control)",
+        icon: "plane",
+        desc: "抵達倫敦希斯洛機場 (Heathrow)，邊境海關詢問入境目的與停留天數。",
+        initialAi: "Good afternoon. Passport, please. What is the primary purpose of your visit to the United Kingdom?",
+        responses: [
+          {
+            default: true,
+            reply: "I see. And how long do you intend to stay in the country, and where will you be accommodated?",
+            better: "I am visiting for sightseeing for roughly ten days, and I will be staying at a hotel in central London.",
+            grammarHint: "海關問答講求精確誠懇，不需要冗長修飾，精準交代 Purpose + Duration + Accommodation。",
+            synonyms: [
+              { word: "sightseeing", note: "觀光遊覽" },
+              { word: "itinerary", note: "旅遊行程表" },
+              { word: "accommodated", note: "住宿安置" }
+            ],
+            tip: "遇到官員詢問，保持眼神交流，準備好回程機票 (Return flight ticket) 憑證以備查驗。"
+          }
+        ]
+      },
+      campus: {
+        title: "大學課堂探討 (Campus Seminar)",
+        icon: "graduation-cap",
+        desc: "在哲學與倫理學研討會上，與教授探討人工智慧的版權歸屬問題。",
+        initialAi: "Welcome everyone. In today's seminar, who owns the intellectual rights to AI-generated art: the user, the developer, or the model itself?",
+        responses: [
+          {
+            default: true,
+            reply: "That is a nuanced point of view. But if human creative intent is absent, can copyright legislation even be applicable?",
+            better: "In my perspective, copyright fundamentally protects human creative expression, so purely algorithmic outputs should belong to the public domain.",
+            grammarHint: "學術討論常以 'In my perspective...' 或 'From my standpoint...' 起頭發表洞見。",
+            synonyms: [
+              { word: "intellectual property", note: "智慧財產權" },
+              { word: "nuanced", note: "細膩具深度的" },
+              { word: "public domain", note: "公有領域" }
+            ],
+            tip: "學術論壇中善用因果連接詞：Consequently, Nonetheless, It is arguable that..."
+          }
+        ]
+      }
+    };
+
+    const EXAM_PROMPTS = [
+      {
+        title: "Describe an impactful technological invention in modern history and explain how it changed everyday human lives.",
+        points: [
+          "What the invention is and when you first learned about it",
+          "How people lived before this invention",
+          "What advantages and potential disadvantages it has brought",
+          "And explain why you consider it so influential."
+        ],
+        modelAnswer: "Without question, the smartphone stands out as one of the most transformative inventions of the modern era. Prior to its ubiquity, retrieving information required stationary desktop access, and navigation relied on paper maps. Today, it encapsulates communication, productivity, and entertainment into a palm-sized apparatus. Although it has triggered legitimate concerns regarding attention spans and digital dependency, its revolutionary capability to render global knowledge instantaneously accessible makes it undeniably influential."
+      },
+      {
+        title: "Talk about an eco-friendly practice or environmental initiative that individuals should adopt in their cities.",
+        points: [
+          "What the practice is and how it functions",
+          "Why it is crucial for sustainable development",
+          "What obstacles people might encounter when implementing it",
+          "And provide your suggestion for local municipalities to encourage it."
+        ],
+        modelAnswer: "A pivotal eco-friendly initiative that every metropolitan area should champion is comprehensive organic composting paired with urban cycle highways. Urban density often exacerbates carbon emissions and solid waste overflow. By transforming food scraps into nutrient-rich soil and redesigning streets to prioritize cyclists over private motorcars, cities cultivate circular ecosystems. The paramount hurdle lies in public inertia, which can be mitigated through incentivized tax rebates and intuitive municipal infrastructure."
+      },
+      {
+        title: "Describe a mentor, teacher, or leader who significantly shaped your personal or professional perspectives.",
+        points: [
+          "Who this person is and in what context you met",
+          "What unique qualities distinguished their leadership or pedagogy",
+          "A specific memorable advice or challenge they gave you",
+          "And explain the lasting impact they have had on your worldview."
+        ],
+        modelAnswer: "The most profoundly influential mentor I have had the privilege to learn from was my undergraduate robotics supervisor, Dr. Vance. Rather than offering spoon-fed solutions, he advocated for iterative trial and deliberate failure. When our autonomous vehicle algorithm crashed prior to the national expo, he calmly remarked that bugs are not setbacks, but forensic breadcrumbs guiding us toward robust engineering. This stoic, analytical mindset has become the cornerstone of my problem-solving philosophy."
+      }
+    ];
+
+    /* ==========================================================
+       2. STATE & WEB SPEECH API INITIALIZATION
+    ========================================================== */
+    let currentScenarioKey = 'cafe';
+    let currentExamPromptIndex = 0;
+    let dialogueHistory = [];
+    let isListening = false;
+    let recognition = null;
+    let selectedVoice = null;
+    let voicesList = [];
+    let latestFeedbackData = null;
+
+    // Exam Timers & Audio State
+    let examPhase = 'idle'; // idle | prep | speaking | finished
+    let examCountdown = 15;
+    let examTimerInterval = null;
+    let audioContext = null;
+    let analyser = null;
+    let microphoneStream = null;
+    let animationFrameId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initSpeechRecognition();
+      initSpeechSynthesis();
+      initDialogue(currentScenarioKey);
+      renderHistory();
+      initCanvasWaveform('waveform-canvas');
+      initCanvasWaveform('exam-waveform');
+    });
+
+    // Theme Toggle
+    function toggleTheme() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      localStorage.setItem('echospeak_theme', isDark ? 'dark' : 'light');
+    }
+    if (localStorage.getItem('echospeak_theme') === 'dark' || (!localStorage.getItem('echospeak_theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+
+    // Tab Switching
+    function switchMode(mode) {
+      const sections = {
+        dialogue: document.getElementById('section-dialogue'),
+        exam: document.getElementById('section-exam'),
+        history: document.getElementById('section-history')
+      };
+      const buttons = {
+        dialogue: document.getElementById('nav-dialogue-btn'),
+        exam: document.getElementById('nav-exam-btn'),
+        history: document.getElementById('nav-history-btn')
+      };
+
+      Object.keys(sections).forEach(key => {
+        if (key === mode) {
+          sections[key].classList.remove('hidden');
+          buttons[key].className = 'nav-tab px-3 py-2 text-sm font-medium rounded-lg text-brand-600 bg-brand-50 dark:bg-brand-950 dark:text-brand-300 flex items-center gap-1.5 transition';
+        } else {
+          sections[key].classList.add('hidden');
+          buttons[key].className = 'nav-tab px-3 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 transition';
+        }
+      });
+      lucide.createIcons();
+    }
+
+    /* ==========================================================
+       3. SPEECH SYNTHESIS (TTS) & RECOGNITION (STT)
+    ========================================================== */
+    function initSpeechSynthesis() {
+      if (!('speechSynthesis' in window)) {
+        showToast("您的瀏覽器不支援 SpeechSynthesis 語音輸出");
+        return;
+      }
+
+      function loadVoices() {
+        voicesList = window.speechSynthesis.getVoices();
+        const select = document.getElementById('voice-select');
+        select.innerHTML = '';
+        
+        // Prioritize English voices
+        const enVoices = voicesList.filter(v => v.lang.startsWith('en'));
+        const displayList = enVoices.length ? enVoices : voicesList;
+
+        displayList.forEach((voice, index) => {
+          const opt = document.createElement('option');
+          opt.value = voice.name;
+          opt.textContent = `${voice.name} (${voice.lang})${voice.default ? ' — 預設' : ''}`;
+          select.appendChild(opt);
+        });
+
+        // Try selecting a natural US/UK voice
+        const naturalVoice = voicesList.find(v => v.lang === 'en-US' && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
+        if (naturalVoice) {
+          select.value = naturalVoice.name;
+          selectedVoice = naturalVoice;
+        } else if (displayList.length > 0) {
+          selectedVoice = displayList[0];
+        }
+      }
+
+      loadVoices();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+      }
+
+      document.getElementById('voice-select').addEventListener('change', (e) => {
+        selectedVoice = voicesList.find(v => v.name === e.target.value);
+      });
+    }
+
+    function speakText(text, onEnd) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel(); // Stop any active speech
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.rate = parseFloat(document.getElementById('voice-rate').value) || 1.0;
+      utterance.pitch = 1.0;
+      if (onEnd) utterance.onend = onEnd;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        document.getElementById('stt-status').innerText = "麥克風: 瀏覽器不支援語音API (請手動鍵入)";
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        updateMicUI(true);
+        startVisualizer('waveform-canvas');
+        document.getElementById('stt-status').innerText = "正在聆聽... 請開口說話";
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        document.getElementById('chat-text-input').value = transcript;
+      };
+
+      recognition.onerror = (event) => {
+        console.warn("STT Error:", event.error);
+        stopVisualizer();
+        updateMicUI(false);
+        document.getElementById('stt-status').innerText = `語音中斷 (${event.error})`;
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        updateMicUI(false);
+        stopVisualizer();
+        document.getElementById('stt-status').innerText = "系統待命";
+        
+        // Auto-send if there is recognized text
+        const text = document.getElementById('chat-text-input').value.trim();
+        if (text.length > 2) {
+          handleUserSend();
+        }
+      };
+    }
+
+    function toggleSpeechRecognition() {
+      if (!recognition) {
+        showToast("當前瀏覽器不支援語音辨識，請使用文字框輸入！");
+        return;
+      }
+      if (isListening) {
+        recognition.stop();
+      } else {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    function updateMicUI(listening) {
+      const pulse = document.getElementById('mic-pulse');
+      const micBtn = document.getElementById('mic-btn');
+      const visBar = document.getElementById('recording-visualizer-container');
+
+      if (listening) {
+        pulse.classList.remove('hidden');
+        micBtn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+        micBtn.classList.remove('bg-brand-600', 'hover:bg-brand-700');
+        visBar.classList.remove('hidden');
+      } else {
+        pulse.classList.add('hidden');
+        micBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+        micBtn.classList.add('bg-brand-600', 'hover:bg-brand-700');
+        visBar.classList.add('hidden');
+      }
+    }
+
+    /* ==========================================================
+       4. AUDIO VISUALIZER (Web Audio API)
+    ========================================================== */
+    function initCanvasWaveform(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillRect(0, canvas.height / 2 - 1, canvas.width, 2);
+    }
+
+    async function startVisualizer(canvasId) {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        const source = audioContext.createMediaStreamSource(microphoneStream);
+        source.connect(analyser);
+
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        function draw() {
+          animationFrameId = requestAnimationFrame(draw);
+          analyser.getByteFrequencyData(dataArray);
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          const barWidth = (canvas.width / bufferLength) * 1.5;
+          let x = 0;
+
+          for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (dataArray[i] / 255) * canvas.height * 0.9;
+            ctx.fillStyle = '#6366f1';
+            ctx.fillRect(x, (canvas.height - barHeight) / 2, barWidth - 2, Math.max(barHeight, 2));
+            x += barWidth;
+          }
+        }
+        draw();
+      } catch (err) {
+        console.warn("Audio Context Visualizer error or mic permission denied:", err);
+      }
+    }
+
+    function stopVisualizer() {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (microphoneStream) {
+        microphoneStream.getTracks().forEach(t => t.stop());
+        microphoneStream = null;
+      }
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+      }
+    }
+
+    /* ==========================================================
+       5. DIALOGUE LOGIC & REALTIME COACH FEEDBACK
+    ========================================================== */
+    function initDialogue(scenarioKey) {
+      const s = SCENARIOS[scenarioKey];
+      currentScenarioKey = scenarioKey;
+      document.getElementById('scenario-title').innerText = s.title;
+      document.getElementById('scenario-desc').innerText = s.desc;
+      
+      const chatContainer = document.getElementById('chat-messages');
+      chatContainer.innerHTML = '';
+      dialogueHistory = [];
+
+      // Initial AI greeting
+      addChatMessage('ai', s.initialAi);
+      speakText(s.initialAi);
+
+      // Reset feedback drawer
+      document.getElementById('feedback-empty-state').classList.remove('hidden');
+      document.getElementById('feedback-content').classList.add('hidden');
+    }
+
+    function changeScenario(key) {
+      initDialogue(key);
+    }
+
+    function resetDialogue() {
+      initDialogue(currentScenarioKey);
+      showToast("對話已重置");
+    }
+
+    function addChatMessage(role, text) {
+      const container = document.getElementById('chat-messages');
+      const row = document.createElement('div');
+      row.className = `flex gap-3 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+      if (role === 'ai') {
+        row.innerHTML = `
+          <div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow">
+            AI
+          </div>
+          <div class="max-w-[80%] rounded-2xl p-3.5 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-sm shadow-sm space-y-2">
+            <p class="leading-relaxed">${escapeHtml(text)}</p>
+            <div class="flex items-center gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+              <button onclick="speakText('${escapeQuotes(text)}')" class="text-xs text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5"></i> 重播語音
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        row.innerHTML = `
+          <div class="max-w-[80%] rounded-2xl p-3.5 bg-brand-600 text-white text-sm shadow-md">
+            <p class="leading-relaxed">${escapeHtml(text)}</p>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-brand-700 dark:text-indigo-300 flex items-center justify-center flex-shrink-0 text-xs font-bold">
+            YOU
+          </div>
+        `;
+      }
+
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+      lucide.createIcons();
+    }
+
+    function handleUserSend() {
+      const input = document.getElementById('chat-text-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      addChatMessage('user', text);
+
+      // Process with simulated AI Coach analysis
+      setTimeout(() => {
+        analyzeAndRespond(text);
+      }, 600);
+    }
+
+    // Allow Enter key to send message
+    document.getElementById('chat-text-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        handleUserSend();
+      }
+    });
+
+    function analyzeAndRespond(userText) {
+      const s = SCENARIOS[currentScenarioKey];
+      const lower = userText.toLowerCase();
+
+      // Find best match in scenario rules
+      let matched = s.responses.find(r => r.match && r.match.some(keyword => lower.includes(keyword)));
+      if (!matched) {
+        matched = s.responses.find(r => r.default) || s.responses[0];
+      }
+
+      // Generate dynamic better sentence if user provided sentence
+      const betterSentence = matched.better || `Could you please assist me with ${userText.slice(0, 20)}?`;
+      
+      // Update Realtime Coach Drawer
+      latestFeedbackData = {
+        original: userText,
+        better: betterSentence,
+        explain: matched.grammarHint || "文法結構良好，建議善用道地的禮貌請求助動詞 (Could / Would)。",
+        synonyms: matched.synonyms || [{ word: "exquisite", note: "精緻優雅的" }, { word: "delightful", note: "令人愉悅的" }],
+        tip: matched.tip || "在英文對話中，適時附帶簡短的感謝詞 (Thanks a lot / Much appreciated) 能讓溝通更流暢。"
+      };
+
+      renderFeedbackDrawer(latestFeedbackData);
+
+      // Add to conversation & Speak
+      addChatMessage('ai', matched.reply);
+      speakText(matched.reply);
+
+      // Save to practice records
+      saveHistoryRecord({
+        mode: '情境對話',
+        scenario: s.title,
+        userInput: userText,
+        feedback: betterSentence,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+
+    function renderFeedbackDrawer(data) {
+      document.getElementById('feedback-empty-state').classList.add('hidden');
+      const content = document.getElementById('feedback-content');
+      content.classList.remove('hidden');
+
+      document.getElementById('fb-original').innerText = `"${data.original}"`;
+      document.getElementById('fb-suggested').innerHTML = `
+        <i data-lucide="arrow-right" class="w-3.5 h-3.5 flex-shrink-0"></i>
+        <span>"${data.better}"</span>
+      `;
+      document.getElementById('fb-explain').innerText = data.explain;
+      document.getElementById('fb-tip').innerText = data.tip;
+
+      const badgeContainer = document.getElementById('vocab-badges');
+      badgeContainer.innerHTML = '';
+      data.synonyms.forEach(item => {
+        const badge = document.createElement('div');
+        badge.className = "flex items-center gap-1 px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 border border-brand-200 dark:border-brand-800 text-xs text-brand-700 dark:text-brand-300 shadow-xs";
+        badge.innerHTML = `<strong>${item.word}</strong> <span class="text-[10px] text-slate-400">(${item.note})</span>`;
+        badgeContainer.appendChild(badge);
+      });
+
+      lucide.createIcons();
+    }
+
+    function playFeedbackSampleAudio() {
+      if (latestFeedbackData && latestFeedbackData.better) {
+        speakText(latestFeedbackData.better);
+      }
+    }
+
+    /* ==========================================================
+       6. EXAM SIMULATION (IELTS/TOEFL)
+    ========================================================== */
+    function loadRandomPrompt() {
+      currentExamPromptIndex = (currentExamPromptIndex + 1) % EXAM_PROMPTS.length;
+      const p = EXAM_PROMPTS[currentExamPromptIndex];
+      document.getElementById('exam-prompt-title').innerText = `"${p.title}"`;
+      
+      const ul = document.getElementById('exam-prompt-points');
+      ul.innerHTML = '';
+      p.points.forEach(pt => {
+        const li = document.createElement('li');
+        li.innerText = pt;
+        ul.appendChild(li);
+      });
+
+      // Reset Exam Box
+      resetExamUI();
+    }
+
+    function resetExamUI() {
+      clearInterval(examTimerInterval);
+      examPhase = 'idle';
+      document.getElementById('exam-timer-label').innerText = "準備中 (Preparation)";
+      document.getElementById('exam-timer-display').innerText = "00:15";
+      document.getElementById('exam-start-btn').classList.remove('hidden');
+      document.getElementById('exam-stop-btn').classList.add('hidden');
+      document.getElementById('exam-report-container').classList.add('hidden');
+      document.getElementById('exam-status-hint').innerText = "點擊開始後將有 15 秒閱讀題目構思，隨後自動啟動 45 秒錄音作答。";
+      stopVisualizer();
+      initCanvasWaveform('exam-waveform');
+    }
+
+    function startExamSequence() {
+      examPhase = 'prep';
+      examCountdown = 15;
+      document.getElementById('exam-start-btn').classList.add('hidden');
+      document.getElementById('exam-timer-label').innerText = "準備時間倒數 (Thinking Time)";
+      document.getElementById('exam-status-hint').innerText = "請把握 15 秒快速筆記思考重點架構...";
+
+      examTimerInterval = setInterval(() => {
+        examCountdown--;
+        const formatted = `00:${examCountdown < 10 ? '0' : ''}${examCountdown}`;
+        document.getElementById('exam-timer-display').innerText = formatted;
+
+        if (examCountdown <= 0) {
+          clearInterval(examTimerInterval);
+          startExamSpeaking();
+        }
+      }, 1000);
+    }
+
+    function startExamSpeaking() {
+      examPhase = 'speaking';
+      examCountdown = 45;
+      document.getElementById('exam-stop-btn').classList.remove('hidden');
+      document.getElementById('exam-timer-label').innerText = "口說作答中 (Speaking Test In Progress)";
+      document.getElementById('exam-timer-label').classList.add('text-rose-500', 'font-bold');
+      document.getElementById('exam-status-hint').innerText = "請大聲作答，盡可能完整陳述論點...";
+
+      startVisualizer('exam-waveform');
+      
+      // Start recording transcription if browser supports it
+      let candidateWords = [];
+      if (recognition) {
+        try {
+          recognition.start();
+          recognition.onresult = (e) => {
+            for (let i = e.resultIndex; i < e.results.length; ++i) {
+              candidateWords.push(e.results[i][0].transcript);
+            }
+          };
+        } catch (e) {
+          console.log(e);
+        }
+      }
+
+      examTimerInterval = setInterval(() => {
+        examCountdown--;
+        const formatted = `00:${examCountdown < 10 ? '0' : ''}${examCountdown}`;
+        document.getElementById('exam-timer-display').innerText = formatted;
+
+        if (examCountdown <= 0) {
+          finishExamSpeaking(candidateWords.join(' '));
+        }
+      }, 1000);
+    }
+
+    function finishExamSpeaking(recognizedText = '') {
+      clearInterval(examTimerInterval);
+      stopVisualizer();
+      if (recognition) {
+        try { recognition.stop(); } catch(e){}
+      }
+
+      examPhase = 'finished';
+      document.getElementById('exam-stop-btn').classList.add('hidden');
+      document.getElementById('exam-start-btn').classList.remove('hidden');
+      document.getElementById('exam-timer-label').innerText = "作答完成 (Completed)";
+      document.getElementById('exam-timer-label').classList.remove('text-rose-500');
+
+      // Generate Report
+      const currentPrompt = EXAM_PROMPTS[currentExamPromptIndex];
+      const fallbackUserText = recognizedText.trim().length > 15 
+        ? recognizedText 
+        : "In my opinion, this technological advancement has substantially transformed the way human society operates. Although there are minor drawbacks regarding privacy and focus, the overall productivity enhancement remains undeniable.";
+      
+      generateExamReport(fallbackUserText, currentPrompt);
+    }
+
+    function generateExamReport(userTranscript, promptObj) {
+      const container = document.getElementById('exam-report-container');
+      container.classList.remove('hidden');
+      container.scrollIntoView({ behavior: 'smooth' });
+
+      document.getElementById('report-user-transcript').innerText = `"${userTranscript}"`;
+      document.getElementById('report-model-answer').innerText = `"${promptObj.modelAnswer}"`;
+
+      // Randomize slight variance in scores for realism (Band 6.5 - 7.5)
+      const band = (6.5 + Math.random() * 1.0).toFixed(1);
+      document.getElementById('report-band-score').innerText = band;
+      document.getElementById('report-cefr-score').innerText = band >= 7.0 ? 'C1' : 'B2';
+
+      // Save to History
+      saveHistoryRecord({
+        mode: '檢定模擬 (IELTS)',
+        scenario: promptObj.title.slice(0, 32) + '...',
+        userInput: userTranscript.slice(0, 50) + '...',
+        score: `Band ${band}`,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+
+    function playModelAnswerAudio() {
+      const p = EXAM_PROMPTS[currentExamPromptIndex];
+      speakText(p.modelAnswer);
+    }
+
+    /* ==========================================================
+       7. HISTORY & STORAGE
+    ========================================================== */
+    function getStoredHistory() {
+      try {
+        return JSON.parse(localStorage.getItem('echospeak_records') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveHistoryRecord(item) {
+      const list = getStoredHistory();
+      list.unshift(item);
+      if (list.length > 20) list.pop(); // keep last 20
+      localStorage.setItem('echospeak_records', JSON.stringify(list));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const list = getStoredHistory();
+      const container = document.getElementById('history-list');
+      const emptyBox = document.getElementById('history-empty');
+
+      container.innerHTML = '';
+      if (!list || list.length === 0) {
+        emptyBox.classList.remove('hidden');
+        return;
+      }
+      emptyBox.classList.add('hidden');
+
+      list.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = "py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+        row.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${item.mode.includes('檢定') ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-brand-100 text-brand-800 dark:bg-brand-900/50 dark:text-brand-300'}">${item.mode}</span>
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-200">${item.scenario}</span>
+              <span class="text-[11px] text-slate-400">• ${item.date}</span>
+            </div>
+            <p class="text-xs text-slate-600 dark:text-slate-300 italic">"${escapeHtml(item.userInput)}"</p>
+            ${item.feedback ? `<p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">建議句: "${escapeHtml(item.feedback)}"</p>` : ''}
+          </div>
+          ${item.score ? `<div class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs flex-shrink-0 self-start sm:self-center">${item.score}</div>` : ''}
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('echospeak_records');
+      renderHistory();
+      showToast("練習紀錄已清除");
+    }
+
+    /* ==========================================================
+       8. UTILITIES & MODAL
+    ========================================================== */
+    function toggleAudioSettingsModal() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function testVoiceSpeech() {
+      speakText("Hello! I am your AI pronunciation and speaking coach. You are doing fantastic!");
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').innerText = text;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    function escapeQuotes(str) {
+      if (!str) return '';
+      return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
